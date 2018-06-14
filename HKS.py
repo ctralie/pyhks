@@ -1,5 +1,6 @@
 import numpy as np 
 from scipy import sparse 
+from scipy.sparse.linalg import lsqr, cg, eigsh
 import matplotlib.pyplot as plt 
 
 
@@ -80,7 +81,7 @@ def makeLaplacianMatrixCotWeights(VPos, ITris, anchorsIdx = [], anchorWeights = 
     I = L.row.tolist()
     J = L.col.tolist()
     V = L.data.tolist()
-    I = I + range(N, N+len(anchorsIdx))
+    I = I + list(range(N, N+len(anchorsIdx)))
     J = J + anchorsIdx
     V = V + [anchorWeights]*len(anchorsIdx)
     L = sparse.coo_matrix((V, (I, J)), shape=(N+len(anchorsIdx), N)).tocsr()
@@ -135,14 +136,114 @@ def makeLaplacianMatrixUmbrellaWeights(VPos, ITris, anchorsIdx = [], anchorWeigh
     I = L.row.tolist()
     J = L.col.tolist()
     V = L.data.tolist()
-    I = I + range(N, N+len(anchorsIdx))
+    I = I + list(range(N, N+len(anchorsIdx)))
     J = J + anchorsIdx
     V = V + [anchorWeights]*len(anchorsIdx)
     L = sparse.coo_matrix((V, (I, J)), shape=(N+len(anchorsIdx), N)).tocsr()
     return L
 
 
-def randomlySamplePoints(VPos, ITris, colPoints = True):
+def getLaplacianSpectrum(VPos, ITris, K):
+    """
+    Given a mesh, to compute first K eigenvectors of its Laplacian
+    and the corresponding eigenvalues
+    Parameters
+    ----------
+    VPos : ndarray (N, 3)
+        Array of points in 3D
+    ITris : ndarray (M, 3)
+        Array of triangles connecting points, pointing to vertex indices
+    K : int
+        Number of eigenvectors to compute
+    Returns
+    -------
+    (eigvalues, eigvectors): a tuple of the eigenvalues and eigenvectors
+    """
+    L = makeLaplacianMatrixCotWeights(VPos, ITris)
+    (eigvalues, eigvectors) = eigsh(L, K, which='LM', sigma = 0)
+    return (eigvalues, eigvectors)
+
+
+def getHeat(eigvalues, eigvectors, t, initialVertices, heatValue = 100.0):
+    """
+    Simulate heat flow by projecting initial conditions
+    onto the eigenvectors of the Laplacian matrix, and then sum up the heat
+    flow of each eigenvector after it's decayed after an amount of time t
+    Parameters
+    ----------
+    eigvalues : ndarray (K)
+        Eigenvalues of the laplacian
+    eigvectors : ndarray (N, K)
+        An NxK matrix of corresponding laplacian eigenvectors
+        Number of eigenvectors to compute
+    t : float
+        The time to simulate heat flow
+    initialVertices : ndarray (L)
+        indices of the verticies that have an initial amount of heat
+    heatValue : float
+        The value to put at each of the initial vertices at the beginning of time
+    
+    Returns
+    -------
+    heat : ndarray (N) holding heat values at each vertex on the mesh
+    """
+    N = eigvectors.shape[0]
+    I = np.zeros(N)
+    I[initialVertices] = heatValue
+    coeffs = I[None, :].dot(eigvectors)
+    coeffs = coeffs.flatten()
+    coeffs = coeffs*np.exp(-eigvalues*t)
+    heat = eigvectors.dot(coeffs[:, None])
+    return heat
+
+def getHKS(VPos, ITris, K, t):
+    """
+    Given a triangle mesh, approximate its curvature at some measurement scale
+    by recording the amount of heat that remains at each vertex after a unit impulse
+    of heat is applied.  This is called the "Heat Kernel Signature" (HKS)
+
+    Parameters
+    ----------
+    VPos : ndarray (N, 3)
+        Array of points in 3D
+    ITris : ndarray (M, 3)
+        Array of triangles connecting points, pointing to vertex indices
+    K : int
+        Number of eigenvalues/eigenvectors to use
+    t : float
+        The time scale at which to compute the HKS
+    
+    Returns
+    -------
+    hks : ndarray (N)
+        A length N array of the HKS values
+    """
+    L = makeLaplacianMatrixUmbrellaWeights(VPos, ITris)
+    (eigvalues, eigvectors) = eigsh(L, K, which='LM', sigma = 0)
+    eigvectors = (eigvectors**2)*np.exp(-eigvalues*t)[None, :]
+    return np.sum(eigvectors, 1)
+
+def randomlySamplePoints(VPos, ITris, NPoints, colPoints = True):
+    """
+    Randomly sample points by area on a triangle mesh.  This function is
+    extremely fast by using broadcasting/numpy operations in lieu of loops
+
+    Parameters
+    ----------
+    VPos : ndarray (N, 3)
+        Array of points in 3D
+    ITris : ndarray (M, 3)
+        Array of triangles connecting points, pointing to vertex indices
+    NPoints : int
+        Number of points to sample
+    colPoints : boolean (default True)
+        Whether the points are along the columns or the rows
+    
+    Returns
+    -------
+    (Ps : NDArray (NPoints, 3) array of sampled points, 
+     Ns : Ndarray (NPoints, 3) of normals at those points   )
+    """
     ###Step 1: Compute cross product of all face triangles and use to compute
     #areas and normals (very similar to code used to compute vertex normals)
 
@@ -230,27 +331,6 @@ def randomlySamplePoints(VPos, ITris, colPoints = True):
         return (Ps.T, Ns.T)
     return (Ps, Ns)
 
-
-
-
-def saveOffFile(filename, VPos, VColors, ITris):
-    #Save off file given buffers, not necessarily in the PolyMesh object
-    nV = VPos.shape[0]
-    nF = ITris.shape[0]
-    fout = open(filename, "w")
-    if VColors.size == 0:
-        fout.write("OFF\n%i %i %i\n"%(nV, nF, 0))
-    else:
-        fout.write("COFF\n%i %i %i\n"%(nV, nF, 0))
-    for i in range(nV):
-        fout.write("%g %g %g"%tuple(VPos[i, :]))
-        if VColors.size > 0:
-            fout.write(" %g %g %g"%tuple(VColors[i, :]))
-        fout.write("\n")
-    for i in range(nF):
-        fout.write("3 %i %i %i\n"%tuple(ITris[i, :]))
-    fout.close()
-
 #Return VPos, VColors, and ITris without creating any structure
 #(Assumes triangle mesh)
 def loadOffFile(filename):
@@ -277,7 +357,6 @@ def loadOffFile(filename):
                 if len(fields) > 2:
                     fields[1:4] = [int(field) for field in fields]
                     [nVertices, nFaces, nEdges] = fields[1:4]
-                    print "nVertices = %i, nFaces = %i"%(nVertices, nFaces)
                     #Pre-allocate vertex arrays
                     VPos = np.zeros((nVertices, 3))
                     VColors = np.zeros((nVertices, 3))
@@ -313,3 +392,41 @@ def loadOffFile(filename):
     VColors = np.array(VColors, np.float64)
     ITris = np.array(ITris, np.int32)
     return (VPos, VColors, ITris)
+
+def saveOffFile(filename, VPos, VColors, ITris):
+    """
+    Save a .off file
+    """
+    nV = VPos.shape[0]
+    nF = ITris.shape[0]
+    fout = open(filename, "w")
+    if VColors.size == 0:
+        fout.write("OFF\n%i %i %i\n"%(nV, nF, 0))
+    else:
+        fout.write("COFF\n%i %i %i\n"%(nV, nF, 0))
+    for i in range(nV):
+        fout.write("%g %g %g"%tuple(VPos[i, :]))
+        if VColors.size > 0:
+            fout.write(" %g %g %g"%tuple(VColors[i, :]))
+        fout.write("\n")
+    for i in range(nF):
+        fout.write("3 %i %i %i\n"%tuple(ITris[i, :]))
+    fout.close()
+
+def saveHKSColors(filename, VPos, hks, ITris, cmap = 'gray'):
+    """
+    Save the mesh as a .coff file using a divergent colormap, where
+    negative curvature is one one side and positive curvature is on the other
+    """
+    c = plt.get_cmap(cmap)
+    x = (hks - np.min(hks))
+    x /= np.max(x)
+    np.array(np.round(x*255.0), dtype=np.int32)
+    C = c(x)
+    C = C[:, 0:3]
+    saveOffFile(filename, VPos, C, ITris)
+
+if __name__ == '__main__':
+    (VPos, VColors, ITris) = loadOffFile('homer.off')
+    hks = getHKS(VPos, ITris, 200, 20)
+    saveHKSColors("hks.off", VPos, hks, ITris)

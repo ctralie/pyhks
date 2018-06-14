@@ -143,6 +143,31 @@ def makeLaplacianMatrixUmbrellaWeights(VPos, ITris, anchorsIdx = [], anchorWeigh
     return L
 
 
+def getEdges(VPos, ITris):
+    """
+    Given a list of triangles, return an array representing the edges
+    """
+    N = VPos.shape[0]
+    M = ITris.shape[0]
+    I = np.zeros(M*6)
+    J = np.zeros(M*6)
+    V = np.ones(M*6)
+    for shift in range(3): 
+        #For all 3 shifts of the roles of triangle vertices
+        #to compute different cotangent weights
+        [i, j, k] = [shift, (shift+1)%3, (shift+2)%3]
+        I[shift*M*2:shift*M*2+M] = ITris[:, i]
+        J[shift*M*2:shift*M*2+M] = ITris[:, j] 
+        I[shift*M*2+M:shift*M*2+2*M] = ITris[:, j]
+        J[shift*M*2+M:shift*M*2+2*M] = ITris[:, i] 
+    L = sparse.coo_matrix((V, (I, J)), shape=(N, N)).tocsr()
+    (row, col) = L.nonzero()
+    I = np.zeros((row.size, 2), dtype = np.int64)
+    I[:, 0] = row
+    I[:, 1] = col
+    return I
+
+
 def getLaplacianSpectrum(VPos, ITris, K):
     """
     Given a mesh, to compute first K eigenvectors of its Laplacian

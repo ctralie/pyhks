@@ -161,11 +161,7 @@ def getEdges(VPos, ITris):
         I[shift*M*2+M:shift*M*2+2*M] = ITris[:, j]
         J[shift*M*2+M:shift*M*2+2*M] = ITris[:, i] 
     L = sparse.coo_matrix((V, (I, J)), shape=(N, N)).tocsr()
-    (row, col) = L.nonzero()
-    I = np.zeros((row.size, 2), dtype = np.int64)
-    I[:, 0] = row
-    I[:, 1] = col
-    return I
+    return L.nonzero()
 
 
 def getLaplacianSpectrum(VPos, ITris, K):

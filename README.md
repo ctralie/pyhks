@@ -14,19 +14,19 @@ As an example, let's examine the HKS on the "homer" mesh in this repository, at 
 <table>
 <tr>
 <td>
-~~~~~ bash
+<code>
 python HKS.py --input homer.off --t 5 --output hks5.off
-~~~~~
+</code>
 </td>
 <td>
-~~~~~ bash
+<code>
 python HKS.py --input homer.off --t 20 --output hks20.off
-~~~~~
+</code>
 </td>
 <td>
-~~~~~ bash
+<code>
 python HKS.py --input homer.off --t 200 --output hks200.off
-~~~~~
+</code>
 </td>
 </tr>
 

@@ -2,6 +2,7 @@ import numpy as np
 from scipy import sparse 
 from scipy.sparse.linalg import lsqr, cg, eigsh
 import matplotlib.pyplot as plt 
+import argparse
 
 
 def makeLaplacianMatrixCotWeights(VPos, ITris, anchorsIdx = [], anchorWeights = 1):
@@ -217,7 +218,7 @@ def getHeat(eigvalues, eigvectors, t, initialVertices, heatValue = 100.0):
     heat = eigvectors.dot(coeffs[:, None])
     return heat
 
-def getHKS(VPos, ITris, K, t):
+def getHKS(VPos, ITris, K, ts):
     """
     Given a triangle mesh, approximate its curvature at some measurement scale
     by recording the amount of heat that remains at each vertex after a unit impulse
@@ -231,18 +232,19 @@ def getHKS(VPos, ITris, K, t):
         Array of triangles connecting points, pointing to vertex indices
     K : int
         Number of eigenvalues/eigenvectors to use
-    t : float
-        The time scale at which to compute the HKS
+    ts : ndarray (T, 1)
+        The time scales at which to compute the HKS
     
     Returns
     -------
-    hks : ndarray (N)
-        A length N array of the HKS values
+    hks : ndarray (N, T)
+        A array of the heat kernel signatures at each of N points
+        at T time intervals
     """
     L = makeLaplacianMatrixUmbrellaWeights(VPos, ITris)
     (eigvalues, eigvectors) = eigsh(L, K, which='LM', sigma = 0)
-    eigvectors = (eigvectors**2)*np.exp(-eigvalues*t)[None, :]
-    return np.sum(eigvectors, 1)
+    res = (eigvectors[:, :, None]**2)*np.exp(-eigvalues[None, :, None]*ts[None, None, :])
+    return np.sum(res, 1)
 
 def randomlySamplePoints(VPos, ITris, NPoints, colPoints = True):
     """
@@ -448,6 +450,14 @@ def saveHKSColors(filename, VPos, hks, ITris, cmap = 'gray'):
     saveOffFile(filename, VPos, C, ITris)
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", type=str, required=True, help="Path to OFF file for triangle mesh on which to compute the HKS")
+    parser.add_argument("--output", type=str, required=True, help="Path to OFF file which holds a colored mesh showing the HKS")
+    parser.add_argument("--t", type=float, required=True, help="Time parameter for the HKS")
+    parser.add_argument("--neigvecs", type=int, required=False, default = 200, help="Number of eigenvectors to use")
+
+    opt = parser.parse_args()
     (VPos, VColors, ITris) = loadOffFile('homer.off')
-    hks = getHKS(VPos, ITris, 200, 20)
-    saveHKSColors("hks.off", VPos, hks, ITris)
+    neigvecs = min(VPos.shape[0], opt.neigvecs)
+    hks = getHKS(VPos, ITris, neigvecs, np.array([opt.t]))
+    saveHKSColors(opt.output, VPos, hks[:, 0], ITris)

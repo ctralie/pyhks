@@ -232,7 +232,7 @@ def getHKS(VPos, ITris, K, ts):
         Array of triangles connecting points, pointing to vertex indices
     K : int
         Number of eigenvalues/eigenvectors to use
-    ts : ndarray (T, 1)
+    ts : ndarray (T)
         The time scales at which to compute the HKS
     
     Returns
@@ -243,7 +243,7 @@ def getHKS(VPos, ITris, K, ts):
     """
     L = makeLaplacianMatrixUmbrellaWeights(VPos, ITris)
     (eigvalues, eigvectors) = eigsh(L, K, which='LM', sigma = 0)
-    res = (eigvectors[:, :, None]**2)*np.exp(-eigvalues[None, :, None]*ts[None, None, :])
+    res = (eigvectors[:, :, None]**2)*np.exp(-eigvalues[None, :, None]*ts.flatten()[None, None, :])
     return np.sum(res, 1)
 
 def randomlySamplePoints(VPos, ITris, NPoints, colPoints = True):

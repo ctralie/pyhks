@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import argparse
 from trimesh import load_off, save_off
 
-def makeLaplacianMatrixCotangentWeights(VPos, ITris, anchorsIdx = [], anchorWeights = 1):
+def get_cotan_laplacian(VPos, ITris, anchorsIdx = [], anchorWeights = 1):
     """
     Quickly compute sparse Laplacian matrix with cotangent weights and Voronoi areas
     by doing many operations in parallel using NumPy
@@ -91,7 +91,7 @@ def makeLaplacianMatrixCotangentWeights(VPos, ITris, anchorsIdx = [], anchorWeig
     L = sparse.coo_matrix((V, (I, J)), shape=(N+len(anchorsIdx), N)).tocsr()
     return L
 
-def makeLaplacianMatrixUmbrellaWeights(VPos, ITris, anchorsIdx = [], anchorWeights = 1):
+def get_umbrella_laplacian(VPos, ITris, anchorsIdx = [], anchorWeights = 1):
     """
     Quickly compute sparse Laplacian matrix with "umbrella weights" (unweighted)
     by doing many operations in parallel using NumPy
@@ -149,7 +149,7 @@ def makeLaplacianMatrixUmbrellaWeights(VPos, ITris, anchorsIdx = [], anchorWeigh
 
 
 
-def getLaplacianSpectrum(VPos, ITris, K):
+def get_laplacian_spectrum(VPos, ITris, K):
     """
     Given a mesh, to compute first K eigenvectors of its Laplacian
     and the corresponding eigenvalues
@@ -165,12 +165,12 @@ def getLaplacianSpectrum(VPos, ITris, K):
     -------
     (eigvalues, eigvectors): a tuple of the eigenvalues and eigenvectors
     """
-    L = makeLaplacianMatrixCotangentWeights(VPos, ITris)
+    L = get_cotan_laplacian(VPos, ITris)
     (eigvalues, eigvectors) = eigsh(L, K, which='LM', sigma = 0)
     return (eigvalues, eigvectors)
 
 
-def getHeat(eigvalues, eigvectors, t, initialVertices, heatValue = 100.0):
+def get_heat(eigvalues, eigvectors, t, initialVertices, heatValue = 100.0):
     """
     Simulate heat flow by projecting initial conditions
     onto the eigenvectors of the Laplacian matrix, and then sum up the heat
@@ -202,7 +202,7 @@ def getHeat(eigvalues, eigvectors, t, initialVertices, heatValue = 100.0):
     heat = eigvectors.dot(coeffs[:, None])
     return heat
 
-def getHKS(VPos, ITris, K, ts):
+def get_hks(VPos, ITris, K, ts):
     """
     Given a triangle mesh, approximate its curvature at some measurement scale
     by recording the amount of heat that remains at each vertex after a unit impulse
@@ -225,7 +225,7 @@ def getHKS(VPos, ITris, K, ts):
         A array of the heat kernel signatures at each of N points
         at T time intervals
     """
-    L = makeLaplacianMatrixCotangentWeights(VPos, ITris)
+    L = get_cotan_laplacian(VPos, ITris)
     (eigvalues, eigvectors) = eigsh(L, K, which='LM', sigma = 0)
     res = (eigvectors[:, :, None]**2)*np.exp(-eigvalues[None, :, None]*ts.flatten()[None, None, :])
     return np.sum(res, 1)
@@ -254,5 +254,5 @@ if __name__ == '__main__':
     opt = parser.parse_args()
     (VPos, VColors, ITris) = load_off(opt.input)
     neigvecs = min(VPos.shape[0], opt.neigvecs)
-    hks = getHKS(VPos, ITris, neigvecs, np.array([opt.t]))
+    hks = get_hks(VPos, ITris, neigvecs, np.array([opt.t]))
     saveHKSColors(opt.output, VPos, hks[:, 0], ITris)

@@ -2,7 +2,7 @@
 
 This is a simple dependency free Python library for the Heat Kernel Signature on triangle meshes.  The only dependencies are the numpy/scipy stack.  If you want to view the results of the computation, you should also download [meshlab].
 
-## Running
+## Running HKS
 To see all options, run the script as follows
 ~~~~~ bash
 python HKS.py --help
@@ -48,3 +48,20 @@ Notice how at smaller time scales, finer, high frequency curvature detail is pre
 
 
 [meshlab]: <http://www.meshlab.net>
+
+
+## Running Point Sampler
+
+There's a function that comes bundled with this software that samples a triangle mesh uniformly by area.  This may be of independent interest to some people.  There is a script that can launch this called "PointSampler.py".  To see all options, run the script as follows
+~~~~~ bash
+python PointSampler.py --help
+~~~~~
+
+For example, the code
+~~~~~ bash
+python PointSampler.py --input homer.off --output out.csv --npoints 1000 --do_plot 1
+~~~~~
+
+will evenly sample 1000 points on homer and show a plot, before saving to a csv file called "out.csv"
+
+<img src = "Sampled1000.png">

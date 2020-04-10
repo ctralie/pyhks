@@ -3,7 +3,7 @@ from scipy import sparse
 from scipy.sparse.linalg import lsqr, cg, eigsh
 import matplotlib.pyplot as plt 
 import argparse
-from Mesh import loadOffFile, saveOffFile
+from trimesh import load_off, save_off
 
 def makeLaplacianMatrixCotangentWeights(VPos, ITris, anchorsIdx = [], anchorWeights = 1):
     """
@@ -242,7 +242,7 @@ def saveHKSColors(filename, VPos, hks, ITris, cmap = 'gray'):
     np.array(np.round(x*255.0), dtype=np.int32)
     C = c(x)
     C = C[:, 0:3]
-    saveOffFile(filename, VPos, C, ITris)
+    save_off(filename, VPos, C, ITris)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -252,7 +252,7 @@ if __name__ == '__main__':
     parser.add_argument("--neigvecs", type=int, required=False, default = 200, help="Number of eigenvectors to use")
 
     opt = parser.parse_args()
-    (VPos, VColors, ITris) = loadOffFile(opt.input)
+    (VPos, VColors, ITris) = load_off(opt.input)
     neigvecs = min(VPos.shape[0], opt.neigvecs)
     hks = getHKS(VPos, ITris, neigvecs, np.array([opt.t]))
     saveHKSColors(opt.output, VPos, hks[:, 0], ITris)

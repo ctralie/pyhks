@@ -5,7 +5,7 @@ This is a simple dependency free Python library for the Heat Kernel Signature on
 ## Running HKS
 To see all options, run the script as follows
 ~~~~~ bash
-python HKS.py --help
+python hks.py --help
 ~~~~~
 
 As an example, let's examine the HKS on the "homer" mesh in this repository, at different scales.  In each example, we output to a file which can be opened in [meshlab], which is the homer mesh colored in grayscale with the values of the HKS
@@ -15,17 +15,17 @@ As an example, let's examine the HKS on the "homer" mesh in this repository, at 
 <tr>
 <td>
 <code>
-python HKS.py --input homer.off --t 5 --output hks5.off
+python hks.py --input homer.off --t 5 --output hks5.off
 </code>
 </td>
 <td>
 <code>
-python HKS.py --input homer.off --t 20 --output hks20.off
+python hks.py --input homer.off --t 20 --output hks20.off
 </code>
 </td>
 <td>
 <code>
-python HKS.py --input homer.off --t 200 --output hks200.off
+python hks.py --input homer.off --t 200 --output hks200.off
 </code>
 </td>
 </tr>
@@ -59,7 +59,7 @@ python PointSampler.py --help
 
 For example, the code
 ~~~~~ bash
-python PointSampler.py --input homer.off --output out.csv --npoints 1000 --do_plot 1
+python sampler.py --input homer.off --output out.csv --npoints 1000 --do_plot 1
 ~~~~~
 
 will evenly sample 1000 points on homer and show a plot, before saving to a csv file called "out.csv"

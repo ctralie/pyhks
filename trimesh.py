@@ -2,7 +2,7 @@ import numpy as np
 from scipy import sparse 
 
 
-def loadOffFile(filename):
+def load_off(filename):
     """
     Load in an OFF file, assuming it's a triangle mesh
     Parameters
@@ -77,7 +77,7 @@ def loadOffFile(filename):
     ITris = np.array(ITris, np.int32)
     return (VPos, VColors, ITris)
 
-def saveOffFile(filename, VPos, VColors, ITris):
+def save_off(filename, VPos, VColors, ITris):
     """
     Save a .off file
     Parameters
@@ -108,7 +108,7 @@ def saveOffFile(filename, VPos, VColors, ITris):
     fout.close()
     
 
-def randomlySamplePoints(VPos, ITris, npoints, colPoints = False):
+def sample_by_area(VPos, ITris, npoints, colPoints = False):
     """
     Randomly sample points by area on a triangle mesh.  This function is
     extremely fast by using broadcasting/numpy operations in lieu of loops
@@ -218,7 +218,7 @@ def randomlySamplePoints(VPos, ITris, npoints, colPoints = False):
 
 
 
-def getEdges(VPos, ITris):
+def get_edges(VPos, ITris):
     """
     Given a list of triangles, return an array representing the edges
     Parameters
